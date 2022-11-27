@@ -30,6 +30,9 @@ namespace Spline
         static List<float> y;
         double[] b = { 5, 6, 8, 9, 6 };
         double[,] A;
+        List<double[,]> Aloc;
+        float xmin;
+        float xmax;
 
         public MainWindow()
         {
@@ -55,16 +58,17 @@ namespace Spline
                 y.Add(float.Parse(xy[1]));
                 x.Add(float.Parse(xy[0]));
             }
-            paint();
+            paintPoints();
+            assemblyA();
         }
 
-        private void paint()
+        private void paintPoints()
         {
-            float xmin = x[0];
-            float xmax = x[0];
+            xmin = x[0];
+            xmax = x[0];
             float xSubZero = 0;
-            float ymin = x[0];
-            float ymax = x[0];
+            float ymin = y[0];
+            float ymax = y[0];
             float ySubZero = 0;
 
             for (int i = 1; i < x.Count; i++)
@@ -101,6 +105,76 @@ namespace Spline
                 graphCanvas.Children.Add(elipse);
             }
         }
+        private void assemblyA()
+        {
+            Aloc = new List<double[,]>();
+            List<double> xk = new List<double>();
+            // Create ranges
+            xk.Add(xmin - Math.Abs(xmin * 0.2));
+            // Побить по-другому
+            for (int i = 1; i < x.Count; i++)
+            {
+                xk.Add(x[i - 1] + (x[i] - x[i - 1]) / 2);
+            }
+            xk.Add(xmax + Math.Abs(xmax*0.2));
+
+            // Making local matrixes
+            for(int i = 0; i < x.Count; i++)
+            {
+                double eps = (x[i] - xk[i]) / (xk[i + 1] - xk[i]);
+                double[,] locmat = new double[4, 4];
+                for (int k = 0; k < 4; k++)
+                {
+                    for (int l = 0; l < 4; l++)
+                        locmat[k, l] = phi(eps, k + 1) * phi(eps, l + 1);
+                }
+                Aloc.Add(locmat);
+            }
+            // Global matrix
+            int size = 2 + Aloc.Count*2;
+            A = new double[size, size];
+            for (int u = 0; u < Aloc.Count; u++)
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    for (int j = 0; j < 4; j++)
+                    {
+                        A[i + u*2, j + u*2] += Aloc[u][i,j];
+                    }
+                }
+            }
+            PrintGlob();
+        }
+        private void PrintGlob()
+        {
+            string s = "";
+            for (int i = 0; i < 6; i++)
+            {
+                for (int j = 0; j < 6; j++)
+                {
+                    s+=A[i, j].ToString()+'\t';
+                }
+                s += '\n';
+            }
+            System.IO.File.WriteAllText("..\\...\\...\\globalmatrix.txt", s);
+        }
+        // All phi-functions
+        private double phi(double eps, int a)
+        {
+            switch (a)
+            {
+                case 1:
+                    return 1 - 3 * Math.Pow(eps, 2) + 2 * Math.Pow(eps, 3);
+                case 2:
+                    return eps - 2 * Math.Pow(eps, 2) + Math.Pow(eps, 3);
+                case 3:
+                    return 3 * Math.Pow(eps, 2) - 2 * Math.Pow(eps, 3);
+                case 4:
+                    return -Math.Pow(eps, 2) + 3 * Math.Pow(eps, 3);
+            }
+                
+            return -1;
+        }
 
         private void solveMatrix()
         {
@@ -123,7 +197,7 @@ namespace Spline
                 }
                 q[i] = (b[size -1-i] - sum)/ Matrix[size - 1 - i, i];
             }
-            int g = 0;
+
         }
         private double[,] triangle(double[,] Matrix)
         {
