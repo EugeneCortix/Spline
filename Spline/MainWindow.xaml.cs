@@ -26,24 +26,28 @@ namespace Spline
     public partial class MainWindow : Window
     {
         static int n;
-        static List<float> x;
-        static List<float> y;
-        double[] b = { 5, 6, 8, 9, 6 };
+        static List<double> x;
+        static List<double> f;
+        static List<double> P;
+        double[] b;
+        double[] q;
         double[,] A;
         List<double[,]> Aloc;
-        float xmin;
-        float xmax;
+        List<double[]> bloc;
+        List<double> xk;
+        double xmin;
+        double xmax;
 
         public MainWindow()
         {
             InitializeComponent();
-            solveMatrix();
+            
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            x = new List<float>();
-            y = new List<float>();
+            x = new List<double>();
+            f = new List<double>();
 
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Title = "Open File";
@@ -55,29 +59,46 @@ namespace Spline
             {
                 string[] xy;
                 xy = fileText[i].Split('\t');
-                y.Add(float.Parse(xy[1]));
-                x.Add(float.Parse(xy[0]));
+                f.Add(double.Parse(xy[1]));
+                x.Add(double.Parse(xy[0]));
             }
-            paintPoints();
+            xmaxmins();
             assemblyA();
+            assemblyb();
+            q = solveMatrix();
+            assemblyP();
+            paintPoints();
+            PrintGlob();
+        }
+
+        private void xmaxmins()
+        {
+            xmin = x[0];
+            xmax = x[0];
+            for (int i = 1; i < x.Count; i++)
+            {
+                if (xmin > x[i]) xmin = x[i];
+                if (xmax < x[i]) xmax = x[i];
+            }
         }
 
         private void paintPoints()
         {
-            xmin = x[0];
-            xmax = x[0];
-            float xSubZero = 0;
-            float ymin = y[0];
-            float ymax = y[0];
-            float ySubZero = 0;
+            
+            double ymin = f[0];
+            double ymax = f[0];
+            double ySubZero = 0;
+            double xSubZero = 0;
 
-            for (int i = 1; i < x.Count; i++)
+            for (int i = 1; i < f.Count; i++)
             {
-                if (xmin > x[i]) xmin = x[i];
-                if (ymin > y[i]) ymin = y[i];
-                if (xmax < x[i]) xmax = x[i];
-                if (ymax < y[i]) ymax = y[i];
+                if (ymin > f[i]) ymin = f[i];
+                if (ymax < f[i]) ymax = f[i];
+                if (ymin > P[i]) ymin = P[i];
+                if (ymax < P[i]) ymax = P[i];
             }
+
+
 
             if (xmin < 0) xSubZero = xmin;
             if (ymin < 0) ySubZero = ymin;
@@ -90,9 +111,11 @@ namespace Spline
             for (int i = 0; i < x.Count; i++)
             {
                 double px = (x[i] - xSubZero) * kx;
-                double py = (y[i] - ySubZero) * ky;
+                double pfy = (f[i] - ySubZero -ymin) * ky;
+                double ppy = (P[i] - ySubZero -ymin) * ky;
 
-                Point point = new Point(px, 300 - py);
+                
+                Point point = new Point(px, 300 - pfy);
                 Ellipse elipse = new Ellipse();
 
                 elipse.Width = 4;
@@ -104,24 +127,52 @@ namespace Spline
 
                 graphCanvas.Children.Add(elipse);
             }
+
+            for (int i = 1; i < x.Count; i++)
+            {
+                double px = (x[i] - xSubZero) * kx;
+                double ppy = (P[i] - ySubZero - ymin) * ky;
+                double px2 = (x[i-1] - xSubZero) * kx;
+                double ppy2 = (P[i-1] - ySubZero - ymin) * ky;
+
+
+
+                Line line = new Line()
+                {
+                    X1 = px,
+                    Y1 = 300 - ppy,
+                    X2 = px2,
+                    Y2 = 300 - ppy2,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 3
+                }; 
+
+                graphCanvas.Children.Add(line);
+            }
+        }
+        private void drawSpline()
+        {
+
         }
         private void assemblyA()
         {
             Aloc = new List<double[,]>();
-            List<double> xk = new List<double>();
+            xk = new List<double>();
             // Create ranges
             xk.Add(xmin - Math.Abs(xmin * 0.2));
-            // Побить по-другому
-            for (int i = 1; i < x.Count; i++)
+            // Crash into a parts
+            int a = 2;
+            for (int i = 1; i < a; i++)
             {
-                xk.Add(x[i - 1] + (x[i] - x[i - 1]) / 2);
+                xk.Add(xmin + (xmax - xmin)/a*i);
             }
             xk.Add(xmax + Math.Abs(xmax*0.2));
 
             // Making local matrixes
-            for(int i = 0; i < x.Count; i++)
+            /*for(int i = 0; i < x.Count; i++)
             {
-                double eps = (x[i] - xk[i]) / (xk[i + 1] - xk[i]);
+                int ind = getxk(x[i]);
+                double eps = (x[i] - xk[ind]) / (xk[ind + 1] - xk[ind]);
                 double[,] locmat = new double[4, 4];
                 for (int k = 0; k < 4; k++)
                 {
@@ -129,9 +180,36 @@ namespace Spline
                         locmat[k, l] = phi(eps, k + 1) * phi(eps, l + 1);
                 }
                 Aloc.Add(locmat);
+            }*/
+
+            for (int i = 1; i < xk.Count; i++)
+            {
+                // Create matrix
+                double[,] locmat = new double[4, 4];
+                // Find all x in this range
+                List<double> xInArea = new List<double>();
+                for(int s = 0; s< x.Count; s++)
+                {
+                    if (x[s] <= xk[i] && x[s] > xk[i - 1])
+                        xInArea.Add(x[s]);
+                }
+
+                // Add elements
+                for(int t = 0; t < xInArea.Count; t++)
+                {
+                   double eps = (xInArea[t] - xk[i - 1]) / (xk[i] - xk[i-1]);
+
+                    for(int m = 0; m < 4; m++)
+                        for(int l = 0; l < 4; l++)
+                        {
+                            locmat[m, l] += phi(eps, m + 1) * phi(eps, l + 1);
+                        }
+                }
+                Aloc.Add(locmat);
             }
-            // Global matrix
-            int size = 2 + Aloc.Count*2;
+
+                // Global matrix
+                int size = 2 + Aloc.Count*2;
             A = new double[size, size];
             for (int u = 0; u < Aloc.Count; u++)
             {
@@ -143,12 +221,21 @@ namespace Spline
                     }
                 }
             }
-            PrintGlob();
+           // PrintGlob();
         }
+        //Find xk
+        private int getxk(double x)
+        {
+            int i = 0;
+            while (xk[i] < x) i++;
+            return i - 1 ;
+        }
+        // Printing the matrix and vectors to the text file
         private void PrintGlob()
         {
-            string s = "";
-            for (int i = 0; i < 6; i++)
+            int w = Convert.ToInt32(Math.Pow(A.Length, 0.5));
+            string s = "Matrix A\n";
+            for (int i = 0; i < w; i++)
             {
                 for (int j = 0; j < 6; j++)
                 {
@@ -156,7 +243,17 @@ namespace Spline
                 }
                 s += '\n';
             }
-            System.IO.File.WriteAllText("..\\...\\...\\globalmatrix.txt", s);
+            s += "\n Vectors \n b\tq\n";
+            for (int i = 0; i < w; i++)
+            {
+                s += b[i].ToString()+ '\t' + q[i].ToString() + '\n';
+            }
+            s += "P-vector\n";
+            for (int i = 0; i < P.Count; i++)
+            {
+                s += P[i].ToString() + '\n';
+            }
+            System.IO.File.WriteAllText("..\\...\\...\\globals.txt", s);
         }
         // All phi-functions
         private double phi(double eps, int a)
@@ -170,61 +267,147 @@ namespace Spline
                 case 3:
                     return 3 * Math.Pow(eps, 2) - 2 * Math.Pow(eps, 3);
                 case 4:
-                    return -Math.Pow(eps, 2) + 3 * Math.Pow(eps, 3);
+                    return -Math.Pow(eps, 2) +  Math.Pow(eps, 3);
             }
                 
             return -1;
         }
-
-        private void solveMatrix()
+        private void assemblyb()
         {
-            double[,] Matrix = { { 1, 2, 3, 4, 5 }, { 16, 27, 8,9,25 },{19,32,13,14,15},{16,17,19,89,20}, {21,22,23,33,25 } };
-             
-            
-            int size = Convert.ToInt32(Math.Pow((Matrix.Length), 0.5));
-            Matrix = triangle(Matrix);
-            //Bm = triangle(Bm);
-            double[] q = new double[size];
-    
-            int s = 1;
-            //Solving SoLAE 
-            for (int i = 0; i<size; i++)
+            // Making local vectors
+            bloc = new List<double[]>();
+            /*  for (int n = 0; n < x.Count; n++)
+              {
+                  int ind = getxk(x[n]);
+                  double eps = (x[n] - xk[ind]) / (xk[ind + 1] - xk[ind]);
+                  double[] locvect = new double[4];
+                  for (int i = 0; i < 4; i++)
+                  {
+                      locvect[i] = f[n] * phi(eps, i + 1); 
+                  }
+                  bloc.Add(locvect);
+              }*/
+            for (int i = 1; i < xk.Count; i++)
             {
-                double sum = 0;
-                for (int j = 0; j < i; j++)
+                List<double> xInArea = new List<double>();
+                List<double> fInArea = new List<double>();
+                double[] locvect = new double[4];
+                for (int s = 0; s < x.Count; s++)
                 {
-                    sum += Matrix[size - 1 - i, j] * q[j];
+                    if (x[s] <= xk[i] && x[s] > xk[i - 1])
+                        xInArea.Add(x[s]);
+                        fInArea.Add(f[s]);
                 }
-                q[i] = (b[size -1-i] - sum)/ Matrix[size - 1 - i, i];
+
+                // Add elements
+                for (int t = 0; t < xInArea.Count; t++)
+                {
+                    double eps = (xInArea[t] - xk[i - 1]) / (xk[i] - xk[i - 1]);
+
+                    for (int m = 0; m < 4; m++)
+                        {
+                        locvect[m] += phi(eps, m + 1) * fInArea[t];// fInArea
+                        }
+                }
+                bloc.Add(locvect);
             }
 
-        }
-        private double[,] triangle(double[,] Matrix)
-        {
-            int size = Convert.ToInt32(Math.Pow((Matrix.Length), 0.5));
-
-            for (int l = 0; l < size-1; l++)
+                // Creating of the global vector b
+                b = new double[(xk.Count - 1)*2 +2]; 
+            for (int n = 0; n < bloc.Count; n++)
             {
-
-                for (int i = 1; i +l < size; i++)
+                for (int i = 0; i < 4; i++)
+                    b[i + n * 2] = bloc[n][i];
+            }
+        }
+        private void assemblyP()
+        {
+            P = new List<double>();
+            for(int i = 0; i < x.Count; i++)
+            {
+                int ind = getxk(x[i]);
+                double p = 0;
+                double eps = (x[i] - xk[ind]) / (xk[ind + 1] - xk[ind]);
+                for(int j = 0; j < 4; j++)
                 {
-                    double k = Matrix[i+l, size - 1 -l] / Matrix[l, size - 1 - l];
-                    b[l + i] -= b[l] * k;
-                    for (int j = 0; j < size; j++)
+                    p += q[ind * 2 + j] * phi(eps, j + 1);
+                }
+                P.Add(p);
+            }
+        }
+        // Solving Aq=b equation
+        private double[] solveMatrix()
+        {
+            double[] ans = new double[b.Length];
+            solveSLAE(ans);
+            return ans;
+        }
+        // Решает СЛАУ
+        public void solveSLAE(double[] ans)
+        {
+            int nSLAE = b.Length;
+            if (ans.Length != nSLAE)
+                throw new Exception("Size of the input array is not compatable with size of SLAE");
+
+
+
+
+            for (int i = 0; i < nSLAE; i++)
+            {
+                double del = A[i, i];
+                double absDel = Math.Abs(del);
+                int iSwap = i;
+
+
+                for (int j = i + 1; j < nSLAE; j++) // ищем максимальный элемент по столбцу
+                {
+                    if (absDel < Math.Abs(A[j, i]))
                     {
-                        Matrix[i+l, j] -= Matrix[l, j] * k;
+                        del = A[j, i];
+                        absDel = Math.Abs(del);
+                        iSwap = j;
                     }
                 }
 
+                if (iSwap != i)
+                {
+                    double buf;
+                    for (int j = i; j < nSLAE; j++)
+                    {
+                        buf = A[i, j];
+                        A[i, j] = A[iSwap, j];
+                        A[iSwap, j] = buf;
+                    }
+                    buf = b[i];
+                    b[i] = b[iSwap];
+                    b[iSwap] = buf;
+                }
+
+                for (int j = i; j < nSLAE; j++)
+                    A[i, j] /= del;
+
+                b[i] /= del;
+
+                for (int j = i + 1; j < nSLAE; j++)
+                {
+                    if (A[j, i] == 0) continue;
+
+                    double el = A[j, i];
+                    for (int k = i; k < nSLAE; k++)
+                    {
+                        A[j, k] -= A[i, k] * el;
+                    }
+
+                    b[j] -= b[i] * el;
+                }
             }
 
-            // Computational error
-            
-            double eps = 0.0000000001;
-            for (int i = 0; i < size; i++)
-                for (int j = 0; j < size; j++)
-                    if (Math.Abs(Matrix[i, j]) < eps) Matrix[i, j] = 0;
-            return Matrix;
+            for (int i = nSLAE - 1; i > -1; i--)
+            {
+                for (int j = i + 1; j < nSLAE; j++)
+                    b[i] -= ans[j] * A[i, j];
+                ans[i] = b[i];
+            }
         }
     }
 }
