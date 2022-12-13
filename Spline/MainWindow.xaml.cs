@@ -38,6 +38,10 @@ namespace Spline
         double xmin;
         double xmax;
 
+        int al = 0;
+        int li = 0;
+        int ve = 0;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -167,7 +171,7 @@ namespace Spline
                 xk.Add(xmin + (xmax - xmin)/a*i);
             }
             xk.Add(xmax + Math.Abs(xmax*0.2));
-
+            printlist(xk, "xk");
             // Making local matrixes
             /*for(int i = 0; i < x.Count; i++)
             {
@@ -205,6 +209,7 @@ namespace Spline
                             locmat[m, l] += phi(eps, m + 1) * phi(eps, l + 1);
                         }
                 }
+                printmat(locmat, "Alocal");
                 Aloc.Add(locmat);
             }
 
@@ -221,7 +226,8 @@ namespace Spline
                     }
                 }
             }
-           // PrintGlob();
+            // PrintGlob();
+            printmat(A, "Aglobal");
         }
         //Find xk
         private int getxk(double x)
@@ -309,6 +315,7 @@ namespace Spline
                         locvect[m] += phi(eps, m + 1) * fInArea[t];// fInArea
                         }
                 }
+                printvect(locvect,"blocal");
                 bloc.Add(locvect);
             }
 
@@ -319,6 +326,7 @@ namespace Spline
                 for (int i = 0; i < 4; i++)
                     b[i + n * 2] = bloc[n][i];
             }
+            printvect(b, "bglobal");
         }
         private void assemblyP()
         {
@@ -334,6 +342,7 @@ namespace Spline
                 }
                 P.Add(p);
             }
+            printlist(P, "P-vector");
         }
         // Solving Aq=b equation
         private double[] solveMatrix()
@@ -408,6 +417,47 @@ namespace Spline
                     b[i] -= ans[j] * A[i, j];
                 ans[i] = b[i];
             }
+        }
+
+
+        //Danila print 
+        private void printvect(double[] vect, string vectname)
+        {
+            string s = "";
+            for(int i = 0; i < vect.Length; i++)
+            {
+                s += vect[i].ToString() + '\n';
+            }
+
+            System.IO.File.WriteAllText("..\\...\\...\\" + vectname +ve.ToString()+ ".txt", s);
+            ve++;
+        }
+        private void printmat(double[,] mat, string matname)
+        {
+            int w = Convert.ToInt32(Math.Pow(mat.Length, 0.5));
+            string s = "";
+            for (int i = 0; i < w; i++)
+            {
+                for (int j = 0; j < w; j++)
+                {
+                    s += mat[i, j].ToString() + '\t';
+                }
+                s += '\n';
+            }
+            System.IO.File.WriteAllText("..\\...\\...\\"+matname +al.ToString()+".txt", s);
+            al++;
+        }
+
+        private void printlist(List<double> list, string lname)
+        {
+            string s = "";
+            for (int i = 0; i < list.Count; i++)
+            {
+                s += list[i].ToString() + '\n';
+            }
+
+            System.IO.File.WriteAllText("..\\...\\...\\" + lname + li.ToString()+ ".txt", s);
+            li++;
         }
     }
 }
