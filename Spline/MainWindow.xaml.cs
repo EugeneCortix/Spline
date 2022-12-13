@@ -70,6 +70,7 @@ namespace Spline
             assemblyA();
             assemblyb();
             q = solveMatrix();
+            printvect(q, "q-vector");
             assemblyP();
             paintPoints();
             PrintGlob();
