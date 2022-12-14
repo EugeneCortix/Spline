@@ -35,8 +35,18 @@ namespace Spline
         List<double[,]> Aloc;
         List<double[]> bloc;
         List<double> xk;
-        double xmin;
-        double xmax;
+        double xScale = 0;
+        double yScale = 0;
+        double kx;
+        double ky;
+        double xSubZero = 0;
+        double ySubZero = 0;
+
+
+        double xmax = 0;
+        double ymax = 0;
+        double xmin = 0;
+        double ymin = 0;
 
         int al = 0;
         int li = 0;
@@ -87,39 +97,47 @@ namespace Spline
             }
         }
 
-        private void paintPoints()
+        private void recountScale()
         {
-            
-            double ymin = f[0];
-            double ymax = f[0];
-            double ySubZero = 0;
-            double xSubZero = 0;
+            xmax = x[0];
+            xmin = x[0];
+            ymin = f[0];
+            ymax = f[0];
 
-            for (int i = 1; i < f.Count; i++)
+            for (int i = 0; i < x.Count; i++)
             {
-                if (ymin > f[i]) ymin = f[i];
-                if (ymax < f[i]) ymax = f[i];
-                if (ymin > P[i]) ymin = P[i];
-                if (ymax < P[i]) ymax = P[i];
+                if (x[i]> xmax) xmax = x[i];
+                if (f[i]> ymax) ymax = f[i];
+                if (P[i]> ymax) ymax = P[i];
+                if (x[i]< xmin) xmin = x[i];
+                if (f[i]< ymin) ymin = f[i];
+                if (P[i]< ymin) ymin = P[i];
+
             }
 
+            if (xmax - xmin > xScale) xScale = xmax - xmin;
+            if (ymax - ymin > yScale) yScale = ymax - ymin;
 
+            kx = graphCanvas.Width / xScale;
+            ky = graphCanvas.Height / yScale;
 
-            if (xmin < 0) xSubZero = xmin;
-            if (ymin < 0) ySubZero = ymin;
+            if (xmin < xSubZero) xSubZero = xmin;
+            if (ymin < ySubZero) ySubZero = ymin;
+        }
 
-            double kx = graphCanvas.ActualWidth /( xmax - xmin);
-            double ky = graphCanvas.ActualHeight / (ymax - ymin);
+        private void paintPoints()
+        {
+            graphCanvas.Children.Clear();
+            recountScale();
 
             // Draw points
 
             for (int i = 0; i < x.Count; i++)
             {
                 double px = (x[i] - xSubZero) * kx;
-                double pfy = (f[i] - ySubZero -ymin) * ky;
-                double ppy = (P[i] - ySubZero -ymin) * ky;
+                double pfy = (f[i] - ySubZero) * ky;
 
-                
+
                 Point point = new Point(px, 300 - pfy);
                 Ellipse elipse = new Ellipse();
 
@@ -133,28 +151,92 @@ namespace Spline
                 graphCanvas.Children.Add(elipse);
             }
 
-            for (int i = 1; i < x.Count; i++)
+            for (int i = 1; i < P.Count; i++)
             {
-                double px = (x[i] - xSubZero) * kx;
-                double ppy = (P[i] - ySubZero - ymin) * ky;
-                double px2 = (x[i-1] - xSubZero) * kx;
-                double ppy2 = (P[i-1] - ySubZero - ymin) * ky;
-
-
+                // System.Diagnostics.Debugger.Break();
+                double x1 = (x[i - 1] - xSubZero) * kx;
+                double y1 = (P[i - 1] - ySubZero) * ky;
+                double x2 = (x[i] - xSubZero) * kx;
+                double y2 = (P[i] - ySubZero) * ky;
 
                 Line line = new Line()
                 {
-                    X1 = px,
-                    Y1 = 300 - ppy,
-                    X2 = px2,
-                    Y2 = 300 - ppy2,
+                    X1 = x1,
+                    Y1 = 300 - y1,
+                    X2 = x2,
+                    Y2 = 300 - y2,
                     Stroke = Brushes.Black,
                     StrokeThickness = 3
-                }; 
+                };
 
                 graphCanvas.Children.Add(line);
             }
-        }
+
+                /*double ymin = f[0];
+                double ymax = f[0];
+                double ySubZero = 0;
+                double xSubZero = 0;
+
+                for (int i = 1; i < f.Count; i++)
+                {
+                    if (ymin > f[i]) ymin = f[i];
+                    if (ymax < f[i]) ymax = f[i];
+                    if (ymin > P[i]) ymin = P[i];
+                    if (ymax < P[i]) ymax = P[i];
+                }
+
+
+
+                if (xmin < 0) xSubZero = xmin;
+                if (ymin < 0) ySubZero = ymin;
+
+                double kx = graphCanvas.ActualWidth /( xmax - xmin);
+                double ky = graphCanvas.ActualHeight / (ymax - ymin);
+
+                // Draw points
+
+                for (int i = 0; i < x.Count; i++)
+                {
+                    double px = (x[i] - xSubZero) * kx;
+                    double pfy = (f[i] - ySubZero -ymin) * ky;
+                    double ppy = (P[i] - ySubZero -ymin) * ky;
+
+
+                    Point point = new Point(px, 300 - pfy);
+                    Ellipse elipse = new Ellipse();
+
+                    elipse.Width = 4;
+                    elipse.Height = 4;
+
+                    elipse.StrokeThickness = 2;
+                    elipse.Stroke = Brushes.Red;
+                    elipse.Margin = new Thickness(point.X - 2, point.Y - 2, 0, 0);
+
+                    graphCanvas.Children.Add(elipse);
+                }
+
+                for (int i = 1; i < x.Count; i++)
+                {
+                    double px = (x[i] - xSubZero) * kx;
+                    double ppy = (P[i] - ySubZero - ymin) * ky;
+                    double px2 = (x[i-1] - xSubZero) * kx;
+                    double ppy2 = (P[i-1] - ySubZero - ymin) * ky;
+
+
+
+                    Line line = new Line()
+                    {
+                        X1 = px,
+                        Y1 = 300 - ppy,
+                        X2 = px2,
+                        Y2 = 300 - ppy2,
+                        Stroke = Brushes.Black,
+                        StrokeThickness = 3
+                    }; 
+
+                    graphCanvas.Children.Add(line);
+                }*/
+            }
         private void drawSpline()
         {
 
