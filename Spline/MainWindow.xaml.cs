@@ -166,26 +166,19 @@ namespace Spline
             // Create ranges
             xk.Add(xmin - Math.Abs(xmin * 0.2));
             // Crash into a parts
-            int a = 2;
+            double a = 2;
             for (int i = 1; i < a; i++)
             {
-                xk.Add(xmin + (xmax - xmin)/a*i);
+                xk.Add(xk[0] +( (xmax + Math.Abs(xmax * 0.2) - xk[0])/a)*i);
             }
             xk.Add(xmax + Math.Abs(xmax*0.2));
             printlist(xk, "xk");
             // Making local matrixes
-            /*for(int i = 0; i < x.Count; i++)
-            {
-                int ind = getxk(x[i]);
-                double eps = (x[i] - xk[ind]) / (xk[ind + 1] - xk[ind]);
-                double[,] locmat = new double[4, 4];
-                for (int k = 0; k < 4; k++)
-                {
-                    for (int l = 0; l < 4; l++)
-                        locmat[k, l] = phi(eps, k + 1) * phi(eps, l + 1);
-                }
-                Aloc.Add(locmat);
-            }*/
+
+            //Suka eps
+            string ss = "";
+            string sss = "";
+
 
             for (int i = 1; i < xk.Count; i++)
             {
@@ -199,23 +192,31 @@ namespace Spline
                         xInArea.Add(x[s]);
                 }
 
+                
                 // Add elements
                 for(int t = 0; t < xInArea.Count; t++)
                 {
                    double eps = (xInArea[t] - xk[i - 1]) / (xk[i] - xk[i-1]);
+                    ss += eps.ToString() + '\n';
+                    sss += (xk[i] - xk[i - 1]).ToString() + '\n';
 
                     for(int m = 0; m < 4; m++)
                         for(int l = 0; l < 4; l++)
                         {
+                            double p1 = phi(eps, m + 1);
+                            double p2 = phi(eps, l + 1);
                             locmat[m, l] += phi(eps, m + 1) * phi(eps, l + 1);
                         }
                 }
                 printmat(locmat, "Alocal");
+               
                 Aloc.Add(locmat);
             }
+            System.IO.File.WriteAllText("..\\...\\...\\print\\eps.txt", ss);
+            System.IO.File.WriteAllText("..\\...\\...\\print\\interv.txt", sss);
 
-                // Global matrix
-                int size = 2 + Aloc.Count*2;
+            // Global matrix
+            int size = 2 + Aloc.Count*2;
             A = new double[size, size];
             for (int u = 0; u < Aloc.Count; u++)
             {
@@ -283,17 +284,6 @@ namespace Spline
         {
             // Making local vectors
             bloc = new List<double[]>();
-            /*  for (int n = 0; n < x.Count; n++)
-              {
-                  int ind = getxk(x[n]);
-                  double eps = (x[n] - xk[ind]) / (xk[ind + 1] - xk[ind]);
-                  double[] locvect = new double[4];
-                  for (int i = 0; i < 4; i++)
-                  {
-                      locvect[i] = f[n] * phi(eps, i + 1); 
-                  }
-                  bloc.Add(locvect);
-              }*/
             for (int i = 1; i < xk.Count; i++)
             {
                 List<double> xInArea = new List<double>();
@@ -302,8 +292,10 @@ namespace Spline
                 for (int s = 0; s < x.Count; s++)
                 {
                     if (x[s] <= xk[i] && x[s] > xk[i - 1])
+                    { 
                         xInArea.Add(x[s]);
                         fInArea.Add(f[s]);
+                    }
                 }
 
                 // Add elements
@@ -325,7 +317,7 @@ namespace Spline
             for (int n = 0; n < bloc.Count; n++)
             {
                 for (int i = 0; i < 4; i++)
-                    b[i + n * 2] = bloc[n][i];
+                    b[i + n * 2] += bloc[n][i];
             }
             printvect(b, "bglobal");
         }
@@ -430,7 +422,7 @@ namespace Spline
                 s += vect[i].ToString() + '\n';
             }
 
-            System.IO.File.WriteAllText("..\\...\\...\\" + vectname +ve.ToString()+ ".txt", s);
+            System.IO.File.WriteAllText("..\\...\\...\\print\\" + vectname +ve.ToString()+ ".txt", s);
             ve++;
         }
         private void printmat(double[,] mat, string matname)
@@ -445,7 +437,7 @@ namespace Spline
                 }
                 s += '\n';
             }
-            System.IO.File.WriteAllText("..\\...\\...\\"+matname +al.ToString()+".txt", s);
+            System.IO.File.WriteAllText("..\\...\\...\\print\\" + matname +al.ToString()+".txt", s);
             al++;
         }
 
@@ -457,7 +449,7 @@ namespace Spline
                 s += list[i].ToString() + '\n';
             }
 
-            System.IO.File.WriteAllText("..\\...\\...\\" + lname + li.ToString()+ ".txt", s);
+            System.IO.File.WriteAllText("..\\...\\...\\print\\" + lname + li.ToString()+ ".txt", s);
             li++;
         }
     }

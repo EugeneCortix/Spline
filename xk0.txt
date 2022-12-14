@@ -1,4 +1,0 @@
-System.Collections.Generic.List`1[System.Double]
--6
--0,00499999999999989
-5,988
