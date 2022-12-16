@@ -29,6 +29,9 @@ namespace Spline
         static List<double> x;
         static List<double> f;
         static List<double> w;
+        static List<double> xl;
+        static List<double> fl;
+        static List<double> wl;
         static List<double> P;
         double[] b;
         double[] q;
@@ -71,13 +74,46 @@ namespace Spline
                 return;
             string[] fileText = System.IO.File.ReadAllLines(openFileDialog.FileName);
             n = Convert.ToInt32(fileText[0]);
-            for (int i = 1; i < n + 1; i++)
+            if (n > 999)
             {
-                string[] xy;
-                xy = fileText[i].Split('\t');
-                w.Add(double.Parse(xy[2]));
-                f.Add(double.Parse(xy[1]));
-                x.Add(double.Parse(xy[0]));
+                for (int i = 1; i < n + 1; i++)
+                {
+                    string[] xy;
+                    xy = fileText[i].Split('\t');
+                    w.Add(double.Parse(xy[2]));
+                    f.Add(double.Parse(xy[1]));
+                    x.Add(double.Parse(xy[0]));
+                }
+            }
+            else
+            {
+                xl = new List<double>();
+                fl = new List<double>();
+                wl = new List<double>();
+                for (int i = 1; i < n + 1; i++)
+                {
+                    string[] xy;
+                    xy = fileText[i].Split('\t');
+                    wl.Add(double.Parse(xy[2]));
+                    fl.Add(double.Parse(xy[1]));
+                    xl.Add(double.Parse(xy[0]));
+                }
+
+                double cntr = 1000 / n;
+                for (int j = 0; j < cntr; j++)
+                {
+                    w.Add(wl[0]);
+                }
+                    for (int j = 1; j < fl.Count; j++)
+                {
+                    for(int g = 0; g < cntr; g++)
+                    {
+                        x.Add(xl[j - 1] + (xl[j] -xl[j-1])/cntr*g);
+                        f.Add(fl[j - 1] + (fl[j] -fl[j-1])/cntr*g);
+                        w.Add(wl[j]);
+                    }
+                    
+                }
             }
             xmaxmins();
             assemblyA();
@@ -134,11 +170,25 @@ namespace Spline
             recountScale();
 
             // Draw points
+            int cntr;
+            if (n > 999) cntr = x.Count;
+            else cntr = xl.Count;
 
-            for (int i = 0; i < x.Count; i++)
+            for (int i = 0; i < cntr; i++)
             {
-                double px = (x[i] - xSubZero) * kx;
-                double pfy = (f[i] - ySubZero) * ky;
+                double pfy;
+                double px;
+                if (n > 999)
+                {
+                    px = (x[i] - xSubZero) * kx;
+                    pfy = (f[i] - ySubZero) * ky;
+                }
+                else
+                {
+                    px = (xl[i] - xSubZero) * kx;
+                    pfy = (fl[i] - ySubZero) * ky;
+                }
+                 
 
 
                 Point point = new Point(px, 300 - pfy);
@@ -177,10 +227,6 @@ namespace Spline
 
               
             }
-       /* private void drawSpline()
-        {
-
-        }*/
         private void assemblyA()
         {
             Aloc = new List<double[,]>();
