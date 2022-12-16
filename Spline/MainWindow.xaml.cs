@@ -28,6 +28,7 @@ namespace Spline
         static int n;
         static List<double> x;
         static List<double> f;
+        static List<double> w;
         static List<double> P;
         double[] b;
         double[] q;
@@ -62,6 +63,7 @@ namespace Spline
         {
             x = new List<double>();
             f = new List<double>();
+            w = new List<double>();
 
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Title = "Open File";
@@ -73,6 +75,7 @@ namespace Spline
             {
                 string[] xy;
                 xy = fileText[i].Split('\t');
+                w.Add(double.Parse(xy[2]));
                 f.Add(double.Parse(xy[1]));
                 x.Add(double.Parse(xy[0]));
             }
@@ -172,75 +175,12 @@ namespace Spline
                 graphCanvas.Children.Add(line);
             }
 
-                /*double ymin = f[0];
-                double ymax = f[0];
-                double ySubZero = 0;
-                double xSubZero = 0;
-
-                for (int i = 1; i < f.Count; i++)
-                {
-                    if (ymin > f[i]) ymin = f[i];
-                    if (ymax < f[i]) ymax = f[i];
-                    if (ymin > P[i]) ymin = P[i];
-                    if (ymax < P[i]) ymax = P[i];
-                }
-
-
-
-                if (xmin < 0) xSubZero = xmin;
-                if (ymin < 0) ySubZero = ymin;
-
-                double kx = graphCanvas.ActualWidth /( xmax - xmin);
-                double ky = graphCanvas.ActualHeight / (ymax - ymin);
-
-                // Draw points
-
-                for (int i = 0; i < x.Count; i++)
-                {
-                    double px = (x[i] - xSubZero) * kx;
-                    double pfy = (f[i] - ySubZero -ymin) * ky;
-                    double ppy = (P[i] - ySubZero -ymin) * ky;
-
-
-                    Point point = new Point(px, 300 - pfy);
-                    Ellipse elipse = new Ellipse();
-
-                    elipse.Width = 4;
-                    elipse.Height = 4;
-
-                    elipse.StrokeThickness = 2;
-                    elipse.Stroke = Brushes.Red;
-                    elipse.Margin = new Thickness(point.X - 2, point.Y - 2, 0, 0);
-
-                    graphCanvas.Children.Add(elipse);
-                }
-
-                for (int i = 1; i < x.Count; i++)
-                {
-                    double px = (x[i] - xSubZero) * kx;
-                    double ppy = (P[i] - ySubZero - ymin) * ky;
-                    double px2 = (x[i-1] - xSubZero) * kx;
-                    double ppy2 = (P[i-1] - ySubZero - ymin) * ky;
-
-
-
-                    Line line = new Line()
-                    {
-                        X1 = px,
-                        Y1 = 300 - ppy,
-                        X2 = px2,
-                        Y2 = 300 - ppy2,
-                        Stroke = Brushes.Black,
-                        StrokeThickness = 3
-                    }; 
-
-                    graphCanvas.Children.Add(line);
-                }*/
+              
             }
-        private void drawSpline()
+       /* private void drawSpline()
         {
 
-        }
+        }*/
         private void assemblyA()
         {
             Aloc = new List<double[,]>();
@@ -248,7 +188,7 @@ namespace Spline
             // Create ranges
             xk.Add(xmin - Math.Abs(xmin * 0.2));
             // Crash into a parts
-            double a = 2;
+            double a = 10;
             for (int i = 1; i < a; i++)
             {
                 xk.Add(xk[0] +( (xmax + Math.Abs(xmax * 0.2) - xk[0])/a)*i);
@@ -268,10 +208,12 @@ namespace Spline
                 double[,] locmat = new double[4, 4];
                 // Find all x in this range
                 List<double> xInArea = new List<double>();
+                List<double> wInArea = new List<double>();
                 for(int s = 0; s< x.Count; s++)
                 {
                     if (x[s] <= xk[i] && x[s] > xk[i - 1])
                         xInArea.Add(x[s]);
+                        wInArea.Add(w[s]);
                 }
 
                 
@@ -287,7 +229,7 @@ namespace Spline
                         {
                             double p1 = phi(eps, m + 1);
                             double p2 = phi(eps, l + 1);
-                            locmat[m, l] += phi(eps, m + 1) * phi(eps, l + 1);
+                            locmat[m, l] += phi(eps, m + 1) * phi(eps, l + 1)*wInArea[t];
                         }
                 }
                 printmat(locmat, "Alocal");
@@ -370,6 +312,7 @@ namespace Spline
             {
                 List<double> xInArea = new List<double>();
                 List<double> fInArea = new List<double>();
+                List<double> wInArea = new List<double>();
                 double[] locvect = new double[4];
                 for (int s = 0; s < x.Count; s++)
                 {
@@ -377,6 +320,7 @@ namespace Spline
                     { 
                         xInArea.Add(x[s]);
                         fInArea.Add(f[s]);
+                        wInArea.Add(w[s]);
                     }
                 }
 
@@ -387,7 +331,7 @@ namespace Spline
 
                     for (int m = 0; m < 4; m++)
                         {
-                        locvect[m] += phi(eps, m + 1) * fInArea[t];// fInArea
+                        locvect[m] += phi(eps, m + 1) * fInArea[t]*wInArea[t];// fInArea
                         }
                 }
                 printvect(locvect,"blocal");
